@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+//Vivo is the base struct where all information about a vivo.x video are saved
 type Vivo struct {
 	VivoURL  string
 	VideoURL string
@@ -37,7 +38,7 @@ func GetVideo(URL string) (Vivo, error) {
 	}
 	bodyAsString := string(bodyAsBytes)
 
-	parameter := regexp.MustCompile("(?s)InitializeStream\\s*\\(\\s*(\\{.+?})\\s*\\)\\s*;").FindString(bodyAsString)
+	parameter := regexp.MustCompile("(?s)InitializeStream\\s*\\(\\s*({.+?})\\s*\\)\\s*;").FindString(bodyAsString)
 	parameter = strings.NewReplacer("\n", "", "\t", "", "InitializeStream ({", "", "});", "", "'", "\"").Replace(strings.TrimSpace(parameter))
 
 	vivo := Vivo{VivoURL: URL,
