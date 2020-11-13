@@ -4,9 +4,9 @@ A very simple tool to get the video url and some other stuff from a [vivo.sx](ht
 
 Only tested on linux, but should work on Mac and Windows too.
 
-## Install:
+## Install
 
-```
+```bash
 go get github.com/bytedream/vivo
 ```
 
