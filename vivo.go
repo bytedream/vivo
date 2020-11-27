@@ -10,10 +10,11 @@ import (
 	"strings"
 )
 
-//Vivo is the base struct where all information about a vivo.x video are saved
+//Vivo is the base struct where all information about a vivo.sx video are saved
 type Vivo struct {
 	VivoURL  string
 	VideoURL string
+	ID       string
 	Title    string
 	Mime     string
 	Quality  string
@@ -22,8 +23,12 @@ type Vivo struct {
 
 // GetVideo extracts the video url and some other nice information from a vivo.sx page
 func GetVideo(URL string) (Vivo, error) {
-	if !regexp.MustCompile("(vivo\\.sx/)(.{10}$)").MatchString(URL) {
+	if !regexp.MustCompile("(vivo\\.sx/)(.*)(.{10}$)").MatchString(URL) {
 		return Vivo{}, errors.New("Not a valid vivo.sx url")
+	}
+
+	if strings.Contains(URL, "/embed/") {
+		URL = strings.ReplaceAll(URL, "/embed/", "/")
 	}
 
 	response, err := http.Get(URL)
@@ -42,6 +47,7 @@ func GetVideo(URL string) (Vivo, error) {
 	parameter = strings.NewReplacer("\n", "", "\t", "", "InitializeStream ({", "", "});", "", "'", "\"").Replace(strings.TrimSpace(parameter))
 
 	vivo := Vivo{VivoURL: URL,
+		ID:    URL[strings.LastIndex(URL, "/")+1:],
 		Title: strings.TrimPrefix(strings.TrimSuffix(regexp.MustCompile(`<h1>(.*?)<strong>`).FindString(bodyAsString), "&nbsp;<strong>"), "<h1>Watch ")}
 
 	for _, info := range strings.Split(parameter, ",") {
