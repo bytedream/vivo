@@ -22,9 +22,9 @@ type Vivo struct {
 }
 
 // GetVideo extracts the video url and some other nice information from a vivo.sx page
-func GetVideo(URL string) (Vivo, error) {
+func GetVideo(URL string) (*Vivo, error) {
 	if !regexp.MustCompile("(vivo\\.sx/)(.*)(.{10}$)").MatchString(URL) {
-		return Vivo{}, errors.New("Not a valid vivo.sx url")
+		return &Vivo{}, errors.New("Not a valid vivo.sx url")
 	}
 
 	if strings.Contains(URL, "/embed/") {
@@ -33,20 +33,20 @@ func GetVideo(URL string) (Vivo, error) {
 
 	response, err := http.Get(URL)
 	if err != nil {
-		return Vivo{}, err
+		return &Vivo{}, err
 	}
 	defer response.Body.Close()
 
 	bodyAsBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return Vivo{}, err
+		return &Vivo{}, err
 	}
 	bodyAsString := string(bodyAsBytes)
 
 	parameter := regexp.MustCompile("(?s)InitializeStream\\s*\\(\\s*({.+?})\\s*\\)\\s*;").FindString(bodyAsString)
 	parameter = strings.NewReplacer("\n", "", "\t", "", "InitializeStream ({", "", "});", "", "'", "\"").Replace(strings.TrimSpace(parameter))
 
-	vivo := Vivo{VivoURL: URL,
+	vivo := &Vivo{VivoURL: URL,
 		ID:    URL[strings.LastIndex(URL, "/")+1:],
 		Title: strings.TrimPrefix(strings.TrimSuffix(regexp.MustCompile(`<h1>(.*?)<strong>`).FindString(bodyAsString), "&nbsp;<strong>"), "<h1>Watch ")}
 
@@ -64,7 +64,7 @@ func GetVideo(URL string) (Vivo, error) {
 		case "source":
 			decodedURL, err := url.QueryUnescape(value)
 			if err != nil {
-				return Vivo{}, err
+				return &Vivo{}, err
 			}
 			videoURL := rot47(decodedURL)
 			vivo.VideoURL = videoURL
