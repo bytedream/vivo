@@ -1,7 +1,8 @@
-package vivo
+package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,10 +20,17 @@ type Vivo struct {
 	Mime     string
 	Quality  string
 	Length   int64
+
+	client *http.Client
 }
 
 // GetVideo extracts the video url and some other nice information from a vivo.sx page
 func GetVideo(URL string) (*Vivo, error) {
+	return GetVideoWithProxy(URL, http.DefaultClient)
+}
+
+// GetVideoWithProxy extracts the video url and some other nice information from a vivo.sx page with a pre defined proxy
+func GetVideoWithProxy(URL string, proxy *http.Client) (*Vivo, error) {
 	if !regexp.MustCompile("(vivo\\.sx/)(.*)(.{10}$)").MatchString(URL) {
 		return &Vivo{}, errors.New("Not a valid vivo.sx url")
 	}
@@ -31,7 +39,7 @@ func GetVideo(URL string) (*Vivo, error) {
 		URL = strings.ReplaceAll(URL, "/embed/", "/")
 	}
 
-	response, err := http.Get(URL)
+	response, err := proxy.Get(URL)
 	if err != nil {
 		return &Vivo{}, err
 	}
@@ -42,13 +50,15 @@ func GetVideo(URL string) (*Vivo, error) {
 		return &Vivo{}, err
 	}
 	bodyAsString := string(bodyAsBytes)
+	fmt.Println(bodyAsString)
 
 	parameter := regexp.MustCompile("(?s)InitializeStream\\s*\\(\\s*({.+?})\\s*\\)\\s*;").FindString(bodyAsString)
 	parameter = strings.NewReplacer("\n", "", "\t", "", "InitializeStream ({", "", "});", "", "'", "\"").Replace(strings.TrimSpace(parameter))
 
-	vivo := &Vivo{VivoURL: URL,
-		ID:    URL[strings.LastIndex(URL, "/")+1:],
-		Title: strings.TrimPrefix(strings.TrimSuffix(regexp.MustCompile(`<h1>(.*?)<strong>`).FindString(bodyAsString), "&nbsp;<strong>"), "<h1>Watch ")}
+	vivo := &Vivo{client: proxy,
+		VivoURL: URL,
+		ID:      URL[strings.LastIndex(URL, "/")+1:],
+		Title:   strings.TrimPrefix(strings.TrimSuffix(regexp.MustCompile(`<h1>(.*?)<strong>`).FindString(bodyAsString), "&nbsp;<strong>"), "<h1>Watch ")}
 
 	for _, info := range strings.Split(parameter, ",") {
 		keyValue := strings.Split(info, ": ")
@@ -69,7 +79,7 @@ func GetVideo(URL string) (*Vivo, error) {
 			videoURL := rot47(decodedURL)
 			vivo.VideoURL = videoURL
 
-			video, err := http.Get(videoURL)
+			video, err := proxy.Get(videoURL)
 			if err != nil {
 				return vivo, nil
 			}
@@ -83,7 +93,7 @@ func GetVideo(URL string) (*Vivo, error) {
 
 // Download downloads the video
 func (v Vivo) Download(destination io.Writer) error {
-	response, err := http.Get(v.VideoURL)
+	response, err := v.client.Get(v.VideoURL)
 	if err != nil {
 		return err
 	}
