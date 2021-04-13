@@ -2,7 +2,6 @@ package vivo
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -50,7 +49,6 @@ func GetVideoWithProxy(URL string, proxy *http.Client) (*Vivo, error) {
 		return &Vivo{}, err
 	}
 	bodyAsString := string(bodyAsBytes)
-	fmt.Println(bodyAsString)
 
 	parameter := regexp.MustCompile("(?s)InitializeStream\\s*\\(\\s*({.+?})\\s*\\)\\s*;").FindString(bodyAsString)
 	parameter = strings.NewReplacer("\n", "", "\t", "", "InitializeStream ({", "", "});", "", "'", "\"").Replace(strings.TrimSpace(parameter))
