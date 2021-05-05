@@ -30,9 +30,29 @@ func GetVideo(URL string) (*Vivo, error) {
 
 // GetVideoWithProxy extracts the video url and some other nice information from a vivo.sx page with a pre defined proxy
 func GetVideoWithProxy(URL string, proxy *http.Client) (*Vivo, error) {
-	if !regexp.MustCompile("(vivo\\.sx/)(.*)(.{10}$)").MatchString(URL) {
+	var scheme string
+
+	re := regexp.MustCompile("^(?P<scheme>http(s?)://)?vivo\\.(sx|st)/(|embed/).{10}(/|$)")
+	groupNames := re.SubexpNames()
+	reMatch := re.FindAllStringSubmatch(URL, 1)
+
+	if len(reMatch) == 0 {
 		return &Vivo{}, errors.New("Not a valid vivo.sx url")
+	} else {
+		for _, match := range reMatch {
+			for i, content := range match {
+				if groupNames[i] == "scheme" {
+					scheme = content
+					break
+				}
+			}
+		}
 	}
+	if scheme == "" {
+		URL = "https://" + URL
+	}
+
+	//return &Vivo{}, errors.New("Not a valid vivo.sx url")
 
 	if strings.Contains(URL, "/embed/") {
 		URL = strings.ReplaceAll(URL, "/embed/", "/")

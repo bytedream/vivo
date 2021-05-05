@@ -1,6 +1,7 @@
 # vivo
 
 A very simple tool to get the video url and some other stuff from a [vivo.sx](https://vivo.sx) video.
+The alternative domain [vivo.st](https://vivo.st) is also supported.
 
 Only tested on linux, but should work on Mac and Windows too.
 
