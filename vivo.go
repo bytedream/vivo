@@ -25,23 +25,24 @@ type Vivo struct {
 
 // GetVideo extracts the video url and some other nice information from a vivo.sx page
 func GetVideo(URL string) (*Vivo, error) {
-	return GetVideoWithProxy(URL, http.DefaultClient)
+	return GetVideoWithClient(URL, http.DefaultClient)
 }
 
-// GetVideoWithProxy extracts the video url and some other nice information from a vivo.sx page with a pre defined proxy
-func GetVideoWithProxy(URL string, proxy *http.Client) (*Vivo, error) {
+// GetVideoWithClient extracts the video url and some other nice information from a vivo.sx page with a pre defined proxy
+func GetVideoWithClient(URL string, client *http.Client) (*Vivo, error) {
 	var scheme string
 
-	re := regexp.MustCompile("^(?P<scheme>http(s?)://)?vivo\\.(sx|st)/(|embed/).{10}(/|$)")
-	groupNames := re.SubexpNames()
-	reMatch := re.FindAllStringSubmatch(URL, 1)
+	URL = strings.TrimSuffix(URL, "/")
 
-	if len(reMatch) == 0 {
-		return &Vivo{}, errors.New("Not a valid vivo.sx url")
+	urlPattern := regexp.MustCompile(`(?m)^(?P<scheme>https?://)?vivo\.(sx|st)/(embed/)?.{10}`)
+	urlGroups := urlPattern.SubexpNames()
+
+	if urlMatch := urlPattern.FindAllStringSubmatch(URL, -1); len(urlMatch) == 0 {
+		return &Vivo{}, errors.New("Not a valid url")
 	} else {
-		for _, match := range reMatch {
+		for _, match := range urlMatch {
 			for i, content := range match {
-				if groupNames[i] == "scheme" {
+				if urlGroups[i] == "scheme" {
 					scheme = content
 					break
 				}
@@ -52,13 +53,17 @@ func GetVideoWithProxy(URL string, proxy *http.Client) (*Vivo, error) {
 		URL = "https://" + URL
 	}
 
-	//return &Vivo{}, errors.New("Not a valid vivo.sx url")
-
 	if strings.Contains(URL, "/embed/") {
 		URL = strings.ReplaceAll(URL, "/embed/", "/")
 	}
 
-	response, err := proxy.Get(URL)
+	req, err := http.NewRequest(http.MethodGet, URL, nil)
+	if err != nil {
+		return &Vivo{}, err
+	}
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0")
+
+	response, err := client.Do(req)
 	if err != nil {
 		return &Vivo{}, err
 	}
@@ -68,42 +73,46 @@ func GetVideoWithProxy(URL string, proxy *http.Client) (*Vivo, error) {
 	if err != nil {
 		return &Vivo{}, err
 	}
-	bodyAsString := string(bodyAsBytes)
 
-	parameter := regexp.MustCompile("(?s)InitializeStream\\s*\\(\\s*({.+?})\\s*\\)\\s*;").FindString(bodyAsString)
-	parameter = strings.NewReplacer("\n", "", "\t", "", "InitializeStream ({", "", "});", "", "'", "\"").Replace(strings.TrimSpace(parameter))
+	streamPattern := regexp.MustCompile(`(?m)<h1>Watch (?P<title>[\S\s]+)&nbsp|quality:\s*(?P<quality>\S+),|source:\s*'(?P<source>\S+)'`)
+	streamGroups := streamPattern.SubexpNames()
 
-	vivo := &Vivo{client: proxy,
+	vivo := &Vivo{
+		client:  client,
 		VivoURL: URL,
 		ID:      URL[strings.LastIndex(URL, "/")+1:],
-		Title:   strings.TrimPrefix(strings.TrimSuffix(regexp.MustCompile(`<h1>(.*?)<strong>`).FindString(bodyAsString), "&nbsp;<strong>"), "<h1>Watch ")}
+	}
 
-	for _, info := range strings.Split(parameter, ",") {
-		keyValue := strings.Split(info, ": ")
-		if len(keyValue) <= 1 {
-			continue
-		}
-		key := keyValue[0]
-		value := strings.ReplaceAll(keyValue[1], "\"", "")
+	for _, match := range streamPattern.FindAllSubmatch(bodyAsBytes, -1) {
+		for i, content := range match {
+			contentAsString := string(content)
+			if contentAsString != "" {
+				switch streamGroups[i] {
+				case "title":
+					vivo.Title = contentAsString
+				case "quality":
+					vivo.Quality = contentAsString + "p"
+				case "source":
+					decodedURL, err := url.QueryUnescape(contentAsString)
+					if err != nil {
+						return &Vivo{}, err
+					}
+					videoURL := rot47(decodedURL)
+					vivo.VideoURL = videoURL
 
-		switch key {
-		case "quality":
-			vivo.Quality = value + "p"
-		case "source":
-			decodedURL, err := url.QueryUnescape(value)
-			if err != nil {
-				return &Vivo{}, err
+					video, err := client.Get(videoURL)
+					if err != nil {
+						return &Vivo{}, err
+					}
+					vivo.Mime = video.Header.Get("content-type")
+					vivo.Length = video.ContentLength
+				}
 			}
-			videoURL := rot47(decodedURL)
-			vivo.VideoURL = videoURL
-
-			video, err := proxy.Get(videoURL)
-			if err != nil {
-				return vivo, nil
-			}
-			vivo.Mime = video.Header.Get("content-type")
-			vivo.Length = video.ContentLength
 		}
+	}
+
+	if vivo.VideoURL == "" {
+		return &Vivo{}, errors.New("Could not find video")
 	}
 
 	return vivo, nil
