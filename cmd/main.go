@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -20,6 +21,7 @@ var (
 	output string
 	proxy  string
 	clean  bool
+	quiet  bool
 )
 
 const (
@@ -55,10 +57,19 @@ func main() {
 	flag.StringVar(&output, "o", ".", "Destination of the file")
 	flag.StringVar(&proxy, "p", "", "Proxy to use")
 	flag.BoolVar(&clean, "c", false, "Show clean output / disable all additions (colors and separator between multiple downloads)")
+	flag.BoolVar(&quiet, "q", false, "Disable the output")
 
 	flag.Parse()
 
-	e := log.New(os.Stderr, "", 0)
+	var o, e *log.Logger
+
+	if quiet {
+		o = log.New(ioutil.Discard, "", 0)
+		e = log.New(ioutil.Discard, "", 0)
+	} else {
+		o = log.New(os.Stdout, "", 0)
+		e = log.New(os.Stderr, "", 0)
+	}
 
 	if flag.NArg() == 0 {
 		e.Fatalln(colorize(RED, "At least one url must be specified"))
@@ -96,17 +107,17 @@ func main() {
 			colorize(MAGENTA, video.Mime))
 
 		if infos {
-			fmt.Println(videoInformation)
+			o.Println(videoInformation)
 		}
 		if source {
 			if infos {
-				fmt.Println()
+				o.Println()
 			}
-			fmt.Println(video.VideoURL)
+			o.Println(video.VideoURL)
 		}
 
 		if !(infos || source) {
-			fmt.Printf("%s\n\n", videoInformation)
+			o.Printf("%s\n\n", videoInformation)
 
 			fileInfo, err := os.Stat(output)
 			if fileInfo != nil && fileInfo.IsDir() {
@@ -123,16 +134,16 @@ func main() {
 				}
 			}
 
-			fmt.Printf(colorize(CYAN, "Downloading %s to '%s'..."), video.VivoURL, output)
+			o.Printf(colorize(CYAN, "Downloading %s to '%s'..."), video.VivoURL, output)
 			if err := video.Download(file); err != nil {
 				e.Fatalln(colorize(RED, err.Error()))
 			}
 
-			fmt.Printf(colorize(GREEN, " finished\n"))
+			o.Printf(colorize(GREEN, " finished\n"))
 		}
 
 		if i != flag.NArg()-1 && !clean {
-			fmt.Println("\n--------------------------------------------------")
+			o.Println("\n--------------------------------------------------")
 		}
 	}
 }
