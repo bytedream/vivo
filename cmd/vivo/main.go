@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/ByteDream/vivo"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"os"
 	"path"
 	"runtime"
+
+	"github.com/ByteDream/vivo"
 )
 
 type Color int
