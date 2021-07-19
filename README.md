@@ -11,9 +11,9 @@ Only tested on Linux, but should work on Mac and Windows too.
 ### Binary
 
 Get the [latest binaries](https://github.com/ByteDream/vivo/releases/latest) if you just want the command line version.
-- [Linux (amd64)](https://github.com/ByteDream/vivo/releases/download/v1.0/vivo-1.0_linux)
-- [Windows (amd64)](https://github.com/ByteDream/vivo/releases/download/v1.0/vivo-1.0_windows)
-- [Mac (amd64)](https://github.com/ByteDream/vivo/releases/download/v1.0/vivo-1.0_darwin)
+- [Linux (amd64)](https://github.com/ByteDream/vivo/releases/download/v1.0/vivo-v1.0_linux)
+- [Windows (amd64)](https://github.com/ByteDream/vivo/releases/download/v1.0/vivo-v1.0_windows)
+- [Mac (amd64)](https://github.com/ByteDream/vivo/releases/download/v1.0/vivo-v1.0_darwin)
 
 Or install and run it directly from source
 ```
